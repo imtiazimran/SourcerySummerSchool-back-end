@@ -119,29 +119,35 @@ async function run() {
                 res.status(500).send("Internal Server Error");
             }
         });
+
         app.delete("/cart/:id", async (req, res) => {
             try {
-              const id = req.params.id;
+              const cartItemId = req.params.id;
           
-              const query = { _id: new ObjectId(id) };
-              const cartItem = await cartCollection.findOne(query);
+              const cartQuery = { _id: new ObjectId(cartItemId) };
+              const cartItem = await cartCollection.findOne(cartQuery);
+              console.log(cartItem)
           
               if (!cartItem) {
                 return res.status(404).send("Cart item not found");
               }
           
-              const update = { $inc: { availableSeats: +1 } };
-          
-              // Update the availableSeats in the popularClass collection
-              await popularCollection.updateOne(query, update);
-          
-              const result = await cartCollection.deleteOne(query);
+              const classId = cartItem.classId; // Assuming id field in the cart item corresponds to _id field of the class
+              const classQuery = { _id: new ObjectId(classId) };
+              const update = { $inc: { availableSeats: 1 } };
+              
+            //   Update the availableSeats in the popularClass collection
+              await popularCollection.updateOne(classQuery, update);
+              const result = await cartCollection.deleteOne(cartQuery);
               res.send(result);
             } catch (error) {
               console.error(error);
               res.status(500).send("Internal Server Error");
             }
           });
+          
+          
+          
           
 
 

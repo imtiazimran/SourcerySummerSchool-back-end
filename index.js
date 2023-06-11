@@ -4,6 +4,8 @@ const cors = require('cors')
 const jwt = require('jsonwebtoken')
 const port = process.env.PORT || 4214
 require('dotenv').config()
+const Stripe = require('stripe')(process.env.PAYMENT_TOKEN)
+
 
 
 // middleware
@@ -54,10 +56,11 @@ async function run() {
         await client.connect();
 
         const DB = client.db('SorcerySummerSchool')
-        const popularCollection = DB.collection('populerClass')
+        const classCollection = DB.collection('populerClass')
         const instructorsCollection = DB.collection('instructors')
         const cartCollection = DB.collection('cart')
         const usersCollection = DB.collection('users')
+        const paidClassCollection = DB.collection('paymentHistory')
 
 
 
@@ -83,14 +86,58 @@ async function run() {
         })
 
         app.get("/populerClass", async (req, res) => {
-            const result = await popularCollection.find().toArray()
+            const result = await classCollection.find().toArray()
             res.send(result)
         })
 
+        app.post('/class', async (req, res) => {
+            const newClass = req.body;
+            const result = await classCollection.insertOne(newClass)
+            res.send(result)
+        })
+
+        // added class api
+        app.get("/addedClass/:email", async (req, res) => {
+            const email = req.params.email;
+            const query = { instructorEmail: email };
+            const result = await classCollection.find(query).toArray()
+            res.send(result)
+        })
+
+        // instructors
         app.get("/instructors", async (req, res) => {
             const result = await instructorsCollection.find().sort({ numberOfStudents: -1 }).toArray()
             res.send(result)
         })
+
+        // 
+        // create payment intent api
+        app.post('/create-payment-intent', async (req, res) => {
+            const { price } = req.body;
+            const amount = price * 100;
+            const paymentIntent = await Stripe.paymentIntents.create({
+                amount: amount,
+                currency: "usd",
+                payment_method_types: ['card']
+            });
+            res.send({
+                clientSecret: paymentIntent.client_secret
+            })
+        })
+
+        app.post('/payment', varifyJWT, async (req, res) => {
+            const paidItems = req.body;
+            const result = await paidClassCollection.insertOne(paidItems);
+            
+            // Update the enrolled value for each class in classCollection
+            const query = { _id: { $in: paidItems.cartItems.map(id => new ObjectId(id)) } };
+            const update = { $inc: { enrolled: 1 } };
+            await classCollection.updateMany(query, update);
+            
+            const deleteCart = cartCollection.deleteMany(query);
+            res.send({ result, deleteCart });
+        });
+        
 
 
         // cartItem
@@ -102,7 +149,7 @@ async function run() {
             const classId = item.classId; // Assuming you have a classId field in the item object
             const query = { _id: new ObjectId(classId) };
             const update = { $inc: { availableSeats: -1 } };
-            await popularCollection.updateOne(query, update);
+            await classCollection.updateOne(query, update);
 
             res.send(result);
         });
@@ -122,33 +169,33 @@ async function run() {
 
         app.delete("/cart/:id", async (req, res) => {
             try {
-              const cartItemId = req.params.id;
-          
-              const cartQuery = { _id: new ObjectId(cartItemId) };
-              const cartItem = await cartCollection.findOne(cartQuery);
-              console.log(cartItem)
-          
-              if (!cartItem) {
-                return res.status(404).send("Cart item not found");
-              }
-          
-              const classId = cartItem.classId; // Assuming id field in the cart item corresponds to _id field of the class
-              const classQuery = { _id: new ObjectId(classId) };
-              const update = { $inc: { availableSeats: 1 } };
-              
-            //   Update the availableSeats in the popularClass collection
-              await popularCollection.updateOne(classQuery, update);
-              const result = await cartCollection.deleteOne(cartQuery);
-              res.send(result);
+                const cartItemId = req.params.id;
+
+                const cartQuery = { _id: new ObjectId(cartItemId) };
+                const cartItem = await cartCollection.findOne(cartQuery);
+                console.log(cartItem)
+
+                if (!cartItem) {
+                    return res.status(404).send("Cart item not found");
+                }
+
+                const classId = cartItem.classId; // Assuming id field in the cart item corresponds to _id field of the class
+                const classQuery = { _id: new ObjectId(classId) };
+                const update = { $inc: { availableSeats: 1 } };
+
+                //   Update the availableSeats in the popularClass collection
+                await classCollection.updateOne(classQuery, update);
+                const result = await cartCollection.deleteOne(cartQuery);
+                res.send(result);
             } catch (error) {
-              console.error(error);
-              res.status(500).send("Internal Server Error");
+                console.error(error);
+                res.status(500).send("Internal Server Error");
             }
-          });
-          
-          
-          
-          
+        });
+
+
+
+
 
 
 

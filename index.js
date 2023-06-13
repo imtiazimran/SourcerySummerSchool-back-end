@@ -75,55 +75,55 @@ async function run() {
             const result = await usersCollection.insertOne(user)
             res.send(result)
         })
-        
-        app.get("/user", async(req, res) =>{
+
+        app.get("/user", async (req, res) => {
             const result = await usersCollection.find().toArray()
             res.send(result)
         })
-        
+
         //Update user role as admin
-        
+
         app.patch('/users/admin/:id', async (req, res) => {
             const id = req.params.id
             const filter = { _id: new ObjectId(id) }
             const updateToAdmin = {
-              $set: {
-                role: "admin"
-              },
-      
+                $set: {
+                    role: "admin"
+                },
+
             }
             const result = await usersCollection.updateOne(filter, updateToAdmin)
             res.send(result)
-          })
+        })
         //   update user role as instructor
         app.patch('/users/instructor/:id', async (req, res) => {
             const id = req.params.id
             const filter = { _id: new ObjectId(id) }
             const updateToAdmin = {
-              $set: {
-                role: "instructor"
-              },
-      
+                $set: {
+                    role: "instructor"
+                },
+
             }
             const result = await usersCollection.updateOne(filter, updateToAdmin)
             res.send(result)
-          })
+        })
 
         //   check user Authorization
-          app.get("/users/admin/:email", async(req, res) => {
+        app.get("/users/admin/:email", async (req, res) => {
             const email = req.params.email;
-          
+
             // if (req.decoded.email !== email) {
             //   res.send({ admin: false }); 
             // }
             //  if {
-              const query = { email: email };
-              const user = await usersCollection.findOne(query);
-              const result = { role: user?.role };
-              res.send(result);
+            const query = { email: email };
+            const user = await usersCollection.findOne(query);
+            const result = { role: user?.role };
+            res.send(result);
             // }
-          });
-          
+        });
+
 
 
 
@@ -156,47 +156,93 @@ async function run() {
         // approve api
         app.patch('/class/approve/:id', async (req, res) => {
             try {
-              const classId = req.params.id;
-              const query = { _id: new ObjectId(classId) };
-              const update = { $set: { status: 'approved' } };
-          
-              const result = await classCollection.updateOne(query, update);
-          
-              if (result.modifiedCount === 0) {
-                return res.status(404).send('Class not found');
-              }
-          
-              res.send(result);
+                const classId = req.params.id;
+                const query = { _id: new ObjectId(classId) };
+                const update = { $set: { status: 'approved' } };
+
+                const result = await classCollection.updateOne(query, update);
+
+                if (result.modifiedCount === 0) {
+                    return res.status(404).send('Class not found');
+                }
+
+                res.send(result);
             } catch (error) {
-              console.error(error);
-              res.status(500).send('Internal Server Error');
+                console.error(error);
+                res.status(500).send('Internal Server Error');
             }
-          });
-          
+        });
+        //   deny api
+
+        app.patch('/class/deny/:id', async (req, res) => {
+            try {
+                const classId = req.params.id;
+                const query = { _id: new ObjectId(classId) };
+                const update = { $set: { status: 'denied' } };
+
+                const result = await classCollection.updateOne(query, update);
+
+                if (result.modifiedCount === 0) {
+                    return res.status(404).send('Class not found');
+                }
+
+                res.send(result);
+            } catch (error) {
+                console.error(error);
+                res.status(500).send('Internal Server Error');
+            }
+        });
+
+        // feedback api
+        // ...
+
+        // Add feedback to class
+        app.post('/class/:id/feedback', async (req, res) => {
+            try {
+                const classId = req.params.id;
+                const feedback = req.body;
+                const query = { _id: new ObjectId(classId) };
+                const update = { $set: { feedback } };
+
+                const result = await classCollection.updateOne(query, update);
+
+                if (result.modifiedCount === 0) {
+                    return res.status(404).send('Class not found');
+                }
+
+                res.send(result);
+            } catch (error) {
+                console.error(error);
+                res.status(500).send('Internal Server Error');
+            }
+        });
+
+        // ...
+
 
 
         // update api
         app.patch('/update-class/:id', async (req, res) => {
             try {
-              const classId = req.params.id;
-              const updatedClass = req.body;
-          
-              const query = { _id: new ObjectId(classId) };
-              const update = { $set: updatedClass };
-          
-              const result = await classCollection.updateOne(query, update);
-          
-              if (result.modifiedCount === 0) {
-                return res.status(404).send('Class not found');
-              }
-          
-              res.send(result);
+                const classId = req.params.id;
+                const updatedClass = req.body;
+
+                const query = { _id: new ObjectId(classId) };
+                const update = { $set: updatedClass };
+
+                const result = await classCollection.updateOne(query, update);
+
+                if (result.modifiedCount === 0) {
+                    return res.status(404).send('Class not found');
+                }
+
+                res.send(result);
             } catch (error) {
-              console.error(error);
-              res.status(500).send('Internal Server Error');
+                console.error(error);
+                res.status(500).send('Internal Server Error');
             }
-          });
-          
+        });
+
 
         // instructors
         app.get("/instructors", async (req, res) => {
@@ -226,11 +272,11 @@ async function run() {
             const query = {
                 _id: { $in: paidItems.cartItems.map(id => new ObjectId(id)) },
             };
-            const update = { $inc: { enrolled: 1 } }; 
+            const update = { $inc: { enrolled: 1 } };
 
 
-             await classCollection.updateMany(query, update);
-            
+            await classCollection.updateMany(query, update);
+
             const deleteCart = cartCollection.deleteMany(query);
             res.send({ result, deleteCart });
         });

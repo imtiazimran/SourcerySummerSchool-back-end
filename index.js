@@ -136,7 +136,7 @@ async function run() {
 
         app.get("/populerClass", async (req, res) => {
             try {
-              const result = await classCollection.find().sort({ enrolled: 1 }).toArray();
+              const result = await classCollection.find().sort({ enrolled: -1 }).toArray();
               res.send(result);
             } catch (error) {
               console.error(error);
@@ -273,20 +273,28 @@ async function run() {
         app.post('/payment', varifyJWT, async (req, res) => {
             const paidItems = req.body;
             const result = await paidClassCollection.insertOne(paidItems);
-            console.log(result)
             const query = {
                 _id: { $in: paidItems.cartItems.map(id => new ObjectId(id)) },
             };
             const update = { $inc: { enrolled: 1 } };
-
-
+            
             await classCollection.updateMany(query, update);
-
-            const deleteCart = await cartCollection.deleteMany(query);
-            console.log(deleteCart)
+            
+            const deleteQuery = {
+                classId: { $in: paidItems.cartItems.map(id => id) },
+              };
+              
+              const deleteCart = await cartCollection.deleteMany(deleteQuery);
+            console.log(deleteCart, deleteQuery)
             res.send({ result, deleteCart });
         });
 
+        app.get("/payment/:email", async(req,res) =>{
+            const email = req.params.email;
+            const query = {email: email}
+            const result = await paidClassCollection.find(query).toArray()
+            res.send(result)
+        })
 
 
 

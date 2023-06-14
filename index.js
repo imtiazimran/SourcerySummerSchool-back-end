@@ -18,7 +18,6 @@ const varifyJWT = (req, res, next) => {
     if (!authorization) {
         return res.status(401).send({ error: true, message: "Unauthorized Access" })
     }
-
     // barer token
     const token = authorization.split(" ")[1];
 
@@ -151,7 +150,7 @@ async function run() {
         })
 
         // added class api
-        app.get("/addedClass/:email", async (req, res) => {
+        app.get("/addedClass/:email", varifyJWT, async (req, res) => {
             const email = req.params.email;
             const query = { instructorEmail: email };
             const result = await classCollection.find(query).toArray()
@@ -285,14 +284,13 @@ async function run() {
               };
               
               const deleteCart = await cartCollection.deleteMany(deleteQuery);
-            console.log(deleteCart, deleteQuery)
             res.send({ result, deleteCart });
         });
 
         app.get("/payment/:email", async(req,res) =>{
             const email = req.params.email;
             const query = {email: email}
-            const result = await paidClassCollection.find(query).toArray()
+            const result = await paidClassCollection.find(query).sort({data: -1}).toArray()
             res.send(result)
         })
 
@@ -314,7 +312,7 @@ async function run() {
             res.send(result);
         });
 
-        app.get("/cart", async (req, res) => {
+        app.get("/cart", varifyJWT, async (req, res) => {
             try {
                 const email = req.query.email;
                 const query = { user: email };

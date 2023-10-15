@@ -2,6 +2,7 @@ const express = require('express');
 const app = express()
 const cors = require('cors')
 const jwt = require('jsonwebtoken')
+const nodemailer = require('nodemailer');
 const port = process.env.PORT || 4214
 require('dotenv').config()
 const Stripe = require('stripe')(process.env.PAYMENT_TOKEN)
@@ -35,6 +36,37 @@ app.get('/', (req, res) => {
     res.send("learning magic start from here")
 })
 
+// Define the email sending endpoint
+// Configure Nodemailer for sending emails
+const transporter = nodemailer.createTransport({
+    service: 'Gmail', // e.g., 'Gmail', 'Outlook', or use your SMTP settings
+    auth: {
+        user: `${process.env.NODE_MAIL_GMAIL}`,
+        pass: `${process.env.GMAIL_PASSWORD}`,
+    },
+}); 
+
+// Define the email sending endpoint
+app.post('/send-email', (req, res) => {
+    const { name, email, message } = req.body;
+
+    const mailOptions = {
+        from: email,
+        to: 'amranhossain080@gmail.com',
+        subject: 'Contact from summer camp school ',
+        text: `Name: ${name}\nEmail: ${email}\nMessage: ${message}`,
+    };
+
+    transporter.sendMail(mailOptions, (error, info) => {
+        if (error) {
+            console.error('Error sending email: ', error);
+            res.status(500).send('Error sending email');
+        } else {
+            console.log('Email sent: ' + info.response);
+            res.status(200).send('Email sent successfully');
+        }
+    });
+});
 
 
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
@@ -52,7 +84,7 @@ const client = new MongoClient(uri, {
 async function run() {
     try {
         // Connect the client to the server	(optional starting in v4.7)
-        await client.connect();
+        // await client.connect();
 
         const DB = client.db('SorcerySummerSchool')
         const classCollection = DB.collection('populerClass')
@@ -60,7 +92,34 @@ async function run() {
         const cartCollection = DB.collection('cart')
         const usersCollection = DB.collection('users')
         const paidClassCollection = DB.collection('paymentHistory')
+        const blogs = DB.collection('blogs')
+        const reviews = DB.collection('reviews')
 
+
+
+        // get all the blogs
+        app.get("/blogs", async (req, res) => {
+            const result = await blogs.find().toArray()
+            res.send(result)
+        })
+
+
+        // get all the reviews
+        app.get("/reviews", async (req, res) => {
+            const result = await reviews.find().toArray()
+            res.send(result)
+        })
+
+
+
+
+        // post review
+        app.post('/review', async (req, res) => {
+            const review = req.body;
+            const result = await reviews.insertOne(review)
+            console.log(result);
+            res.send(result)
+        })
 
 
         // save user
@@ -135,13 +194,13 @@ async function run() {
 
         app.get("/populerClass", async (req, res) => {
             try {
-              const result = await classCollection.find().sort({ enrolled: -1 }).toArray();
-              res.send(result);
+                const result = await classCollection.find().sort({ enrolled: -1 }).toArray();
+                res.send(result);
             } catch (error) {
-              console.error(error);
-              res.status(500).send("Internal Server Error");
+                console.error(error);
+                res.status(500).send("Internal Server Error");
             }
-          });
+        });
 
         app.post('/class', async (req, res) => {
             const newClass = req.body;
@@ -276,21 +335,21 @@ async function run() {
                 _id: { $in: paidItems.cartItems.map(id => new ObjectId(id)) },
             };
             const update = { $inc: { enrolled: 1 } };
-            
+
             await classCollection.updateMany(query, update);
-            
+
             const deleteQuery = {
                 classId: { $in: paidItems.cartItems.map(id => id) },
-              };
-              
-              const deleteCart = await cartCollection.deleteMany(deleteQuery);
+            };
+
+            const deleteCart = await cartCollection.deleteMany(deleteQuery);
             res.send({ result, deleteCart });
         });
 
-        app.get("/payment/:email", async(req,res) =>{
+        app.get("/payment/:email", async (req, res) => {
             const email = req.params.email;
-            const query = {email: email}
-            const result = await paidClassCollection.find(query).sort({data: -1}).toArray()
+            const query = { email: email }
+            const result = await paidClassCollection.find(query).sort({ data: -1 }).toArray()
             res.send(result)
         })
 
@@ -358,7 +417,7 @@ async function run() {
 
 
         // Send a ping to confirm a successful connection
-        await client.db("admin").command({ ping: 1 });
+        // await client.db("admin").command({ ping: 1 });
         console.log("Pinged your deployment. You successfully connected to MongoDB!");
     } finally {
         // Ensures that the client will close when you finish/error

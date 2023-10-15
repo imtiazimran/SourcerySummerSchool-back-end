@@ -52,7 +52,7 @@ app.post('/send-email', (req, res) => {
 
     const mailOptions = {
         from: email,
-        to: 'amranhossain080@gmail.com',
+        to: 'myselfjack1@gmail.com',
         subject: 'Contact from summer camp school ',
         text: `Name: ${name}\nEmail: ${email}\nMessage: ${message}`,
     };

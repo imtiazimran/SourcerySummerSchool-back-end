@@ -44,7 +44,7 @@ const transporter = nodemailer.createTransport({
         user: `${process.env.NODE_MAIL_GMAIL}`,
         pass: `${process.env.GMAIL_PASSWORD}`,
     },
-}); 
+});
 
 // Define the email sending endpoint
 app.post('/send-email', (req, res) => {
@@ -94,7 +94,15 @@ async function run() {
         const paidClassCollection = DB.collection('paymentHistory')
         const blogs = DB.collection('blogs')
         const reviews = DB.collection('reviews')
+        const extraCollection = DB.collection('ExtraCollection');
 
+
+
+        
+
+        // // Insert the magic trick data into the database
+        // const result = await extraCollection.insertMany(dataToInsert);
+        // console.log(`${result.insertedCount} documents were inserted`);
 
 
         // get all the blogs
@@ -107,6 +115,13 @@ async function run() {
         // get all the reviews
         app.get("/reviews", async (req, res) => {
             const result = await reviews.find().toArray()
+            res.send(result)
+        })
+
+
+        // get all the reviews
+        app.get("/extraClasses", async (req, res) => {
+            const result = await extraCollection.find().toArray()
             res.send(result)
         })
 
@@ -367,6 +382,7 @@ async function run() {
             const query = { _id: new ObjectId(classId) };
             const update = { $inc: { availableSeats: -1 } };
             await classCollection.updateOne(query, update);
+            await extraCollection.updateOne(query, update);
 
             res.send(result);
         });
